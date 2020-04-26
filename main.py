@@ -6,36 +6,55 @@ import math
 import numpy as np
 import cv2
 
-img = cv2.imread('test.png')
+img = cv2.imread('baboon.bmp')
 height, width, channels = img.shape
 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 data = np.array(img)
-flattened = data.flatten()
+flattened = data.flatten().tolist()
 
-window_size = 256
-lookahead_buffer_size = 128
+window_size = 100
+lookahead_buffer_size = 50
 search_buffer_size = window_size - lookahead_buffer_size
 
-# string = np.array(['c', 'a', 'b', 'r', 'a', 'c', 'a', 'd',
-#                   'a', 'b', 'r', 'a', 'r', 'r', 'a', 'r', 'r', 'a', 'd'])
+#flattened = ['c', 'a', 'b', 'r', 'a', 'c', 'a', 'd',
+#                      'a', 'b', 'r', 'a', 'r', 'r', 'a', 'r', 'r', 'a', 'd']
 
 
-def get_longest_match(stream, current_position):
-    minimum_search_index = max(0, current_position - search_buffer_size - 1)
-    maximum_search_index = min(
-        len(flattened) - 1, current_position + lookahead_buffer_size - 1)
-    search_buffer = stream[minimum_search_index: maximum_search_index + 1]
-    lookahead_buffer = stream[current_position: maximum_search_index + 1]
-    for seq_length in range(lookahead_buffer_size, 0, -1):
-        match_index, match_length = last_match_sequence(
-            search_buffer, lookahead_buffer[: seq_length], minimum_search_index, current_position)
-        if match_index != -1:
-            offset = current_position - match_index
-            current_position += (match_length + 1)
-            return (offset, match_length, stream[current_position - 1], current_position)
+def get_longest_match(data, current_position):
+    """ 
+    Finds the longest match to a substring starting at the current_position 
+    in the lookahead buffer from the history window
+    """
+    end_of_buffer = min(current_position +
+                        lookahead_buffer_size, len(data) + 1)
 
-    current_position += 1
-    return (0, 0, stream[current_position - 1], current_position)
+    best_match_distance = -1
+    best_match_length = -1
+
+    # Optimization: Only consider substrings of length 2 and greater, and just
+    # output any substring of length 1 (8 bits uncompressed is better than 13 bits
+    # for the flag, distance, and length)
+    for j in range(current_position + 2, end_of_buffer):
+
+        start_index = max(0, current_position - window_size)
+        substring = data[current_position:j]
+
+        for i in range(start_index, current_position):
+
+            repetitions = int(len(substring) / (current_position - i))
+
+            last = len(substring) % (current_position - i)
+
+            matched_string = data[i:current_position] * \
+                repetitions + data[i:i+last]
+
+            if matched_string == substring and len(substring) > best_match_length:
+                best_match_distance = current_position - i
+                best_match_length = len(substring)
+
+    if best_match_distance > 0 and best_match_length > 0:
+        return (best_match_distance, best_match_length)
+    return (0, 0)
 
 
 def last_match_sequence(arr, seq, min_indx, current_pos):
@@ -59,18 +78,20 @@ def last_match_sequence(arr, seq, min_indx, current_pos):
 current_position = 0
 
 codes = []
-print(codes)
+print('encoding...')
 while current_position < len(flattened):
-    offset, length, next_code, current_position = get_longest_match(
-        flattened, current_position)
+    offset, length = get_longest_match(flattened, current_position)
+    current_position += length 
+    next_code = flattened[current_position]
+    current_position += 1
     codes.append([offset, length, next_code])
 
-tags = np.array(codes)
-print(codes)
-print(tags)
-# save the binary data for the codes
-#    np.save('image.npy', tags)
+tags = np.array(codes, dtype=np.uint8)
 
+# save the binary data for the codes
+np.save('image.npy', tags)
+
+print('decoding...')
 decoded = []
 for tag in tags:
     if tag[0] == 0:
