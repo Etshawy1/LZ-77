@@ -5,19 +5,20 @@ Created on Sat Apr 25 22:08:19 2020
 import math
 import numpy as np
 import cv2
+import more_itertools
 
 img = cv2.imread('testdog.bmp')
 height, width, channels = img.shape
 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 data = np.array(img)
-flattened = data.flatten()
+flattened = data.flatten().tolist()
 
-window_size = 123
-lookahead_buffer_size = 20
+window_size = 100
+lookahead_buffer_size = 50
 search_buffer_size = window_size - lookahead_buffer_size
 
-#flattened = np.array(['c', 'a', 'b', 'r', 'a', 'c', 'a', 'd',
-#                   'a', 'b', 'r', 'a', 'r', 'r', 'a', 'r', 'r', 'a', 'd'])
+#flattened = ['c', 'a', 'b', 'r', 'a', 'c', 'a', 'd',
+#                   'a', 'b', 'r', 'a', 'r', 'r', 'a', 'r', 'r', 'a', 'd']
 
 
 def get_longest_match(stream, current_position):
@@ -35,7 +36,7 @@ def get_longest_match(stream, current_position):
         mid = l + (r - l)//2; 
           
         # Check if x is present at mid 
-        test_match_index, test_match_length = last_match_sequence(
+        test_match_index, test_match_length = match_sequence(
             search_buffer, lookahead_buffer[: mid], minimum_search_index, current_position)
   
         # If x is greater, ignore left half 
@@ -56,6 +57,14 @@ def get_longest_match(stream, current_position):
     return (0, 0)
 
 
+def match_sequence(arr, sequence, min_indx, current_pos):
+    possible_matches = list(more_itertools.windowed(arr, len(sequence)))
+    for sequence_start_index in range(current_pos - min_indx + 1):
+        if list(possible_matches[sequence_start_index]) == sequence and sequence_start_index + min_indx != current_pos:
+            return (sequence_start_index + min_indx, len(sequence))
+    return (-1, -1)
+
+
 def last_match_sequence(arr, seq, min_indx, current_pos):
 
     # Range of sequence
@@ -72,6 +81,9 @@ def last_match_sequence(arr, seq, min_indx, current_pos):
         return (matching_indx[-1], len(seq))
     else:
         return (-1, -1)         # No match found
+
+
+
 
 
 current_position = 0
@@ -96,6 +108,7 @@ while current_position < len(flattened):
         codes.append(length)
         pixels.append(next_code)
         flags.append(True)
+
 
 codes = np.array(codes, dtype=np.uint16)
 pixels = np.array(pixels, dtype=np.uint8)
@@ -129,6 +142,7 @@ while pixels_index < len(pixels) and tag < len(flags_after):
         decoded.append(pixels[pixels_index])
         pixels_index += 1
     tag += 1
+
 
 to_remove = len(decoded) % (height * width)
 if to_remove:
