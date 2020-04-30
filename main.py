@@ -62,6 +62,7 @@ def get_longest_match(data, current_position):
     if match_index != -1:
         offset = current_position - match_index
         if offset > 255 or match_length > 255:
+            global data_type
             data_type = 'uint16'
         return (offset, match_length)
     return (0, 0)
@@ -70,7 +71,7 @@ def get_longest_match(data, current_position):
 def match_sequence(arr, sequence, min_indx, current_pos):
     sequence_index = 0
     search_buffer_current_size = current_pos - min_indx
-    for i in range(search_buffer_current_size):
+    for i in range(search_buffer_current_size - 1, 0, -1):
         for j in range(len(sequence)):
             if arr[i+j] == sequence[sequence_index]:
                 sequence_index += 1
