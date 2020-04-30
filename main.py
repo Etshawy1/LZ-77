@@ -69,6 +69,7 @@ def get_longest_match(data, current_position):
 
 
 def match_sequence(arr, sequence, min_indx, current_pos):
+    # we begin from the start of the sequence we want to see if it had matches in arr
     sequence_index = 0
     search_buffer_current_size = current_pos - min_indx
     for i in range(search_buffer_current_size - 1, 0, -1):
@@ -127,12 +128,10 @@ pixels = np.load('image.npy')
 flags_after_unpacking = np.unpackbits(flags, axis=None).astype(np.bool)
 decoded = []
 tag_index = 0
-pixels_index = 0
 codes_index = 0
-while pixels_index < len(pixels) and tag_index < len(flags_after_unpacking):
+while tag_index < len(pixels):
     if flags_after_unpacking[tag_index] == False:
-        decoded.append(pixels[pixels_index])
-        pixels_index += 1
+        decoded.append(pixels[tag_index])
     else:
         sequence_index = len(decoded) - codes[codes_index]
         codes_index += 1
@@ -141,8 +140,7 @@ while pixels_index < len(pixels) and tag_index < len(flags_after_unpacking):
         for letter in range(length):
             decoded.append(decoded[sequence_index])
             sequence_index += 1
-        decoded.append(pixels[pixels_index])
-        pixels_index += 1
+        decoded.append(pixels[tag_index])
     tag_index += 1
 
 
